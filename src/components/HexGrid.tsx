@@ -113,7 +113,7 @@ export default function HexGrid({
   );
 
   return (
-    <View style={[styles.container, { width: gridWidth, height: gridHeight }]}>
+    <View style={[styles.container, { width: gridWidth, height: gridHeight, touchAction: 'none' } as any]}>
       {coords.map(({ q, r }) => {
         const key = coordKey(q, r);
         const emoji = board.get(key) ?? null;

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { GameBoard } from '../types';
 import { generateHexCoords, coordKey, parseKey, hexToPixel } from '../hex/hexUtils';
 import {
@@ -349,7 +349,7 @@ export default function GameScreen() {
   }, [board]);
 
   return (
-    <ScrollView contentContainerStyle={styles.container} bounces={false}>
+    <View style={[styles.container, { overscrollBehavior: 'none' } as any]}>
       <Text style={styles.title}>CandyHive</Text>
 
       <View style={styles.statsRow}>
@@ -390,7 +390,7 @@ export default function GameScreen() {
       <Text style={styles.hint}>
         Drag an emoji toward a neighbor to swap. Match 3+ in a line to clear!
       </Text>
-    </ScrollView>
+    </View>
   );
 }
 
