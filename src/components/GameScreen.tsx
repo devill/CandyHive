@@ -32,6 +32,10 @@ export default function GameScreen() {
   const [gameWon, setGameWon] = useState(false);
   const [animating, setAnimating] = useState(false);
 
+  // Keep a ref to the latest board so async callbacks always read current state
+  const boardRef = useRef(board);
+  boardRef.current = board;
+
   // Create animation values for each cell
   const animValues = useMemo(() => {
     const map = new Map<string, {
@@ -265,8 +269,10 @@ export default function GameScreen() {
     async (fromKey: string, toKey: string) => {
       if (animating || gameWon) return;
 
+      const currentBoard = boardRef.current;
+
       // Check if swap would produce a match
-      if (!wouldSwapMatch(board, fromKey, toKey, coords)) {
+      if (!wouldSwapMatch(currentBoard, fromKey, toKey, coords)) {
         // Invalid swap — bounce animation
         setAnimating(true);
         await animateBounce(fromKey, toKey);
@@ -280,7 +286,7 @@ export default function GameScreen() {
       await animateSwap(fromKey, toKey);
 
       // 2. Apply the swap to the board
-      let current = swapCells(board, fromKey, toKey);
+      let current = swapCells(currentBoard, fromKey, toKey);
       setBoard(new Map(current));
 
       // 3. Process cascading matches with animations
@@ -320,7 +326,6 @@ export default function GameScreen() {
       setAnimating(false);
     },
     [
-      board,
       coords,
       animating,
       gameWon,

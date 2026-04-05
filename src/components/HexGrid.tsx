@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useRef, useMemo, useCallback, useEffect, MutableRefObject } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 import { HexCoord, GameBoard } from '../types';
 import { coordKey, hexToPixel } from '../hex/hexUtils';
@@ -91,9 +91,19 @@ export default function HexGrid({
     };
   }, [positions]);
 
+  // Use refs so the callback passed to HexCell is always up-to-date
+  const boardRef = useRef(board);
+  const animatingRef = useRef(animating);
+  const onDragSwapRef = useRef(onDragSwap);
+
+  useEffect(() => { boardRef.current = board; }, [board]);
+  useEffect(() => { animatingRef.current = animating; }, [animating]);
+  useEffect(() => { onDragSwapRef.current = onDragSwap; }, [onDragSwap]);
+
+  // Stable callback — never changes identity, always reads latest state from refs
   const handleDragRelease = useCallback(
     (key: string, direction: { dx: number; dy: number }) => {
-      if (animating) return;
+      if (animatingRef.current) return;
 
       const coord = coords.find(c => coordKey(c.q, c.r) === key);
       if (!coord) return;
@@ -101,15 +111,15 @@ export default function HexGrid({
       const hexDir = dragToHexDirection(direction.dx, direction.dy);
       const targetKey = coordKey(coord.q + hexDir.dq, coord.r + hexDir.dr);
 
-      // Check target exists and has an emoji
-      if (!board.has(targetKey)) return;
-      const targetEmoji = board.get(targetKey);
-      const sourceEmoji = board.get(key);
+      const currentBoard = boardRef.current;
+      if (!currentBoard.has(targetKey)) return;
+      const targetEmoji = currentBoard.get(targetKey);
+      const sourceEmoji = currentBoard.get(key);
       if (!sourceEmoji || !targetEmoji) return;
 
-      onDragSwap(key, targetKey);
+      onDragSwapRef.current(key, targetKey);
     },
-    [board, coords, animating, onDragSwap]
+    [coords] // coords never changes
   );
 
   return (

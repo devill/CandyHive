@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   Animated,
   PanResponder,
@@ -38,12 +38,20 @@ export default function HexCell({
 }: HexCellProps) {
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
+  // Keep latest props in refs so the PanResponder closure is never stale
+  const callbackRef = useRef(onDragRelease);
+  const disabledRef = useRef(disabled);
+  const emojiRef = useRef(emoji);
+
+  useEffect(() => { callbackRef.current = onDragRelease; }, [onDragRelease]);
+  useEffect(() => { disabledRef.current = disabled; }, [disabled]);
+  useEffect(() => { emojiRef.current = emoji; }, [emoji]);
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabled && emoji !== null,
-      onMoveShouldSetPanResponder: () => !disabled && emoji !== null,
+      onStartShouldSetPanResponder: () => !disabledRef.current && emojiRef.current !== null,
+      onMoveShouldSetPanResponder: () => !disabledRef.current && emojiRef.current !== null,
       onPanResponderMove: (_e: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        // Clamp the drag offset for subtle visual feedback
         const clampedDx = Math.max(-20, Math.min(20, gestureState.dx));
         const clampedDy = Math.max(-20, Math.min(20, gestureState.dy));
         dragOffset.setValue({ x: clampedDx, y: clampedDy });
@@ -52,7 +60,7 @@ export default function HexCell({
         dragOffset.setValue({ x: 0, y: 0 });
         const dist = Math.sqrt(gestureState.dx ** 2 + gestureState.dy ** 2);
         if (dist >= DRAG_THRESHOLD) {
-          onDragRelease({ dx: gestureState.dx, dy: gestureState.dy });
+          callbackRef.current({ dx: gestureState.dx, dy: gestureState.dy });
         }
       },
       onPanResponderTerminate: () => {
