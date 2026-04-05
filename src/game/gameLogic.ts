@@ -1,7 +1,7 @@
 import { HexCoord, GameBoard } from '../types';
 import { coordKey, areAdjacent, parseKey } from '../hex/hexUtils';
 import { findMatches } from '../hex/hexLines';
-import { applyGravity } from '../hex/gravity';
+import { applyGravity, GravityMove } from '../hex/gravity';
 import { EMOJIS } from '../constants';
 
 export function createBoard(coords: HexCoord[]): GameBoard {
@@ -26,8 +26,49 @@ export function swapCells(board: GameBoard, keyA: string, keyB: string): GameBoa
   return newBoard;
 }
 
-// Process the board: find matches, clear, apply gravity, repeat.
-// Returns the new board and total cells cleared.
+// Check if swapping two cells would produce at least one match
+export function wouldSwapMatch(
+  board: GameBoard,
+  keyA: string,
+  keyB: string,
+  coords: HexCoord[]
+): boolean {
+  const swapped = swapCells(board, keyA, keyB);
+  return findMatches(swapped, coords).size > 0;
+}
+
+// One step of processing: find matches, clear them, apply gravity.
+// Returns null if no matches found.
+export interface ProcessStep {
+  matched: Set<string>;
+  gravityMoves: GravityMove[];
+  boardAfterClear: GameBoard;
+  boardAfterGravity: GameBoard;
+}
+
+export function processStep(
+  board: GameBoard,
+  coords: HexCoord[]
+): ProcessStep | null {
+  const matched = findMatches(board, coords);
+  if (matched.size === 0) return null;
+
+  const boardAfterClear = new Map(board);
+  for (const key of matched) {
+    boardAfterClear.set(key, null);
+  }
+
+  const gravResult = applyGravity(boardAfterClear, coords);
+
+  return {
+    matched,
+    gravityMoves: gravResult.moves,
+    boardAfterClear,
+    boardAfterGravity: gravResult.board,
+  };
+}
+
+// Process all cascading matches synchronously (used for initial board setup)
 export function processBoard(
   board: GameBoard,
   coords: HexCoord[]
@@ -38,18 +79,11 @@ export function processBoard(
   let iterations = 0;
   while (iterations < 50) {
     iterations++;
-    const matches = findMatches(current, coords);
-    if (matches.size === 0) break;
+    const step = processStep(current, coords);
+    if (!step) break;
 
-    totalCleared += matches.size;
-
-    // Clear matched cells
-    for (const key of matches) {
-      current.set(key, null);
-    }
-
-    // Apply gravity
-    current = applyGravity(current, coords);
+    totalCleared += step.matched.size;
+    current = step.boardAfterGravity;
   }
 
   return { board: current, cleared: totalCleared };
